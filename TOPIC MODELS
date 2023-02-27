@@ -1,0 +1,171 @@
+
+CODIGO TOPIC MODELS DICTIONARY UTILIZADO EN MATRIZ RIDH COMPLETA 
+#LIBRERIAS
+install.packages("NLP")
+install.packages("tm")
+install.packages("vctrs")
+install.packages("tidyselect")
+install.packages("qdap") 
+install.packages("RWeka")
+install.packages("stringr")
+install.packages("RColorBrewer")
+install.packages("wordcloud")
+install.packages("ape")
+install.packages("dendextend")
+install.packages("quanteda")
+library("NLP")
+library("tm")
+library ("qdap")
+library("RWeka")
+library("stringr") 
+library("RColorBrewer")
+library("wordcloud")
+library("ape")
+library("dendextend")
+library("quanteda")
+
+# SELECCIONA DOCUMENTO
+setwd("C://Users//HP//Dropbox//Sistematización dic 2019//Sistematización//Por temas") 
+tema_ridh <- read.csv("Matriz de RIDH 24 dic.csv ", stringsAsFactors = FALSE)
+str(tema_ridh)
+
+# SELECCIONA LA COLUMNA CON EL TEXTO
+tema_ridh <- tema_ridh$text
+head(tema_ridh, 5)
+
+
+# CLEANING
+tema_ridhl <- tolower(tema_ridh)
+tema_ridhl <- removeWords(tema_ridhl, words = stopwords("spanish"))
+tema_ridhl <- removePunctuation(tema_ridhl)
+tema_ridhl <- removeNumbers(tema_ridhl)
+tema_ridhl <- gsub("á", "a", tema_ridhl)
+tema_ridhl <- gsub("é", "e", tema_ridhl)
+tema_ridhl <- gsub("í", "i", tema_ridhl)
+tema_ridhl <- gsub("ó", "o", tema_ridhl)
+tema_ridhl <- gsub("ú", "u", tema_ridhl)
+tema_ridhl <- stripWhitespace(tema_ridhl)
+head(tema_ridhl, 5)
+
+# TRANSFORM INTO A CORPUS
+tema_source <- VectorSource(tema_ridhl)
+tema_corpus <- VCorpus(tema_source)
+tema_corpus
+tema_corpus [[15]]
+tema_corpus [[15]][1]
+
+# APPLY TM MAP TO THE CORPUS PARA LIMPIARLO CON LAS NUEVAS "STOPS"
+stops <- c(stopwords(kind="es")) 
+tail(stops)
+tema_corpus_clean <- tm_map(tema_corpus, removeWords, stops)
+tema_corpus_clean [[15]][1]
+tema_corpus_clean_matrix <- data.frame(text = sapply(tema_corpus_clean, as.character), stringsAsFactors = FALSE)
+write.csv(tema_corpus_clean_matrix,"C://Users//HP//Dropbox//Sistematización dic 2019//Sistematización//Por temas//Matriz de RIDH 24 dic CLEAN.csv ", row.names = TRUE)
+
+# HACER LA FUNCION DE TOKENIZER PARA N GRAM = 1 - 3
+tokenizer <- function(x)
+  NGramTokenizer(x,Weka_control(min = 1, max = 3))
+
+# CONVERTIR EL CORPUS EN TDM CONTROLAR PARA TOKENIZE Y WEIGHTING
+tema_tdm <- TermDocumentMatrix(tema_corpus_clean, control = list(tokenize = tokenizer))
+
+# CONVERTIR TDM EN MATRIX
+tema_m <- as.matrix(tema_tdm)
+dim(tema_m)
+
+# ANÁLISIS DE FRECUENCIAS 
+term_frequency <- rowSums(tema_m)
+bi_words <- names(term_frequency)
+term_frequency <- sort(term_frequency, decreasing = TRUE)
+
+# PREPARAR LA TDM PARA LA REPRESENTACIÓN VISUAL 
+tema_tdm2 <- removeSparseTerms(sparse = 0.982,  tema_tdm)
+dim(tema_tdm2)
+
+# REVISAR LA DIMENSIÓN: QUE TENGA ENTRE 45 - 75 TERMS
+tema_tdm2
+
+# CONVERTIR CORPUS A MATRIX
+tema_tdm2 <- as.matrix(tema_tdm2)
+term_frequency <- rowSums(tema_tdm2)
+term_frequency <- sort(term_frequency, decreasing = TRUE)
+bi_words <- names(term_frequency)
+term_frequency
+View(term_frequency) 
+# HACER UN CSV DE FREQUENCY PARA VERLO TODO ORDENADAMENTE
+write.csv(term_frequency,"C://Users//HP//Dropbox//Sistematización dic 2019//Sistematización//Por temas//Matriz RIDH term frequency.csv ", row.names = TRUE)
+
+# HACER WORDCLOUD
+wordcloud(bi_words, term_frequency, scale = c(2, 0.1), max.words = 80) 
+
+# HACER BARPLOT
+barplot(term_frequency[1:30], col = "tan", las = 2)  
+
+# HACER EL DENDROGRAMA 
+hc <- hclust(dist(tema_tdm2), method = "complete")
+plot(hc, cex = 0.5) # tamaño de la letra cex =0.1 más chico
+rect.hclust(hc, k=20, border = 2:5) # divide el dendrograma por clusters
+
+#OTRA OPCIÓN DE CLUSTER Y DENDROGAMA
+hc2 <- hclust(dist(tema_tdm2), method = "ward.D2")
+plot(hc2, cex = 0.5) # tamaño de la letra cex =0.1 más chico
+rect.hclust(hc2, k=20, border = 2:5) #esto es para dividir por cuadros y grupos K= es el número de cuadors  border = colores a los cuadros
+
+# DENDROGRAMA REDONDO
+plot(as.phylo(hc), type = "fan")
+
+# DENDROGRAMA VERTICAL
+plot(as.phylo(hc), cex = 0.6, label.offset = 0.5)
+
+######################################### CREATE DICTIONARY#######################################
+
+myDict <- dictionary(list(Acceso_a_la_Justicia_y_Debido_Proceso=c("just*", "ministerio publico", "debido proceso", "judicia*", "proceso judicial", "tort*", "coercion", "estambul", "tort*", "defensores oficio", "detencion", "evaluaciones forenses", "peritos medicos", "impun*", "investigacion", "investigar", "sistema justicia", "procesos judiciales", "proceso judicial", "administracion justicia", "procuracion justicia", "tribunal*", "procuradoria*", "fiscal*"),
+                          Democracia = c("sociedad civil", "paridad", "voto", "electora*", "elecciones", "representacion mujer*", "plataforma accion beijing"),
+                          Desaparicion_Forzada=c("desapar*", "busqueda", "forense*"),
+                          Desarrollo=c("agua", "saneamiento", "financieros", "presupuest*", "salud", "bienestar", "asistencia medica", "alimentacion", "educacion", "escuela*", "escolar*", "seguridad social"),
+                          Detencion_Abitraria=c("deten*"),
+                          Educacion=c("edudac*", "capacit*","escuela*", "escolar*", "ciencia", "tecnologi*"),
+                          Ejecuciones_Extrajudiciales=c("ejecuci*", "ejecuta*"),
+                          Empresas_y_Derechos_Humanos	=c("empresa*", "sector privado", "lugar trabajo", "condiciones trabajo"),
+                          Fuerzas_Armadas=c("fuerzas", "militar"),
+                          Justicia_Transicional=c("just*", "verdad", "reparacion*", "restituc*", "garantias", "no repeticion", "amnistia"),
+                          Libertad_de_Expresion=c("libertad expresion", "periodista", "defensor*", "protesta", "acceso informacion", "medios comunicacion", "pluralismo"),
+                          Medio_Ambiente=c("consulta previa", "desechos", "medio ambiente", "recursos naturales", "cambio climatico"),
+                          Mujeres=c("mujer*", "genero"),
+                          No_discriminacion=c("discriminacion", "mujer*", "genero", "lgbt*", "intersex", "indigena*", "afro*", "afirmativa*","discapaci*"),
+                          Niñas_Niños_y_Adolescentes=c("niñ*", "menores"),
+                          Personas_Afrodescendientes=c("afro*"),
+                          Personas_con_discapacidad=c("discapaci*"),
+                          Personas_defensoras_de_derechos_humanos_y_personas_periodistas=c("defens*", "periodis*"),
+                          Personas_desplazadas_internas=c("desplaza"),
+                          Personas_LGBTTIQ=c("lgbt*", "intersex"),
+                          Personas_migrantes_refugiadas_y_solicitantes_de_asilo =c("migra*", "refug*", "asil"),
+                          Personas_victimas_de_violaciones_de_derechos_humanos	=c("victim*"),
+                          Pobreza=c("pobreza", "desigual*", "alimenta*", "agrari*", "agro*", "nutric*", "salud", "medica", "agua", "saneamiento", "desigual", "seguridad social"),
+                          Salud=c("salud", "seguridad social", "drogas", "aborto", "interrupcion legal", "vihsida", "sexual", "reproduct*"),
+                          Seguridad_y_proteccion_ciudadana=c("just*", "delincu*", "fuerzas", "impun*", "policia"),
+                          Tortura	=c("tortu", "detencion", "evaluaciones forenses", "estambul", "lesion*", "peritos medicos", "trato*", "coercion"),
+                          Trabajo	=c("labor*", "trabaj*"),
+                          Trafico_ilicito_de_personas=c("trafico trata", "trafico ilicito"),
+                          Trata_de_personas=c("trafico trata", "trata"),
+                          Vivienda=c("vivienda")))
+
+# transform a tm Vcorpus to a Quanteda corpus
+
+tema_corpus_cleanQ <- corpus(tema_corpus_clean,metacorpus = NULL, compress = FALSE)
+
+# create a DFM object
+
+tema_dfm <- dfm(tema_corpus_cleanQ)
+tema_dfm
+
+#apply "dfm_lookup" function, the dictionary object can then be applied on a DTM to create a new DTM
+#in which columns represent the dictionary codes
+
+dict_tdm <- dfm_lookup(tema_dfm, myDict, nomatch = "_unmatched")
+View(dict_tdm)
+
+## GUARDAR COMO CSV
+
+topics_tdm <- convert(dict_tdm, to= "data.frame")
+write.csv(topics_tdm,"C://Users//HP//Dropbox//Sistematización dic 2019//Sistematización//Por temas//Matriz RIDH 24 dic sistematizacion TEMAS.csv", row.names = TRUE)
